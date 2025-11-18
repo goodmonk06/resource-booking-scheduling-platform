@@ -12,6 +12,8 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ResourcesService } from './resources.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CreateResourceDto } from './dto/create-resource.dto';
+import { UpdateResourceDto } from './dto/update-resource.dto';
 
 @ApiTags('resources')
 @Controller('resources')
@@ -22,21 +24,13 @@ export class ResourcesController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new resource' })
-  create(
-    @Body()
-    createDto: {
-      groupId: string;
-      name: string;
-      description?: string;
-      capacity?: number;
-      metaJson?: any;
-    },
-  ) {
+  create(@Body() createDto: CreateResourceDto) {
     return this.resourcesService.create({
       name: createDto.name,
       description: createDto.description,
       capacity: createDto.capacity,
       metaJson: createDto.metaJson,
+      isActive: createDto.isActive ?? true,
       group: {
         connect: { id: createDto.groupId },
       },
@@ -65,17 +59,7 @@ export class ResourcesController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update resource' })
-  update(
-    @Param('id') id: string,
-    @Body()
-    updateDto: {
-      name?: string;
-      description?: string;
-      capacity?: number;
-      metaJson?: any;
-      isActive?: boolean;
-    },
-  ) {
+  update(@Param('id') id: string, @Body() updateDto: UpdateResourceDto) {
     return this.resourcesService.update(id, updateDto);
   }
 

@@ -13,6 +13,8 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ReservationsService } from './reservations.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ReservationStatus } from '@prisma/client';
+import { CreateReservationDto } from './dto/create-reservation.dto';
+import { UpdateReservationDto } from './dto/update-reservation.dto';
 
 @ApiTags('reservations')
 @Controller('reservations')
@@ -21,16 +23,7 @@ export class ReservationsController {
 
   @Post()
   @ApiOperation({ summary: 'Create a reservation' })
-  create(
-    @Body()
-    createDto: {
-      resourceId: string;
-      userId?: string;
-      startsAt: string;
-      endsAt: string;
-      metaJson?: any;
-    },
-  ) {
+  create(@Body() createDto: CreateReservationDto) {
     return this.reservationsService.create({
       resourceId: createDto.resourceId,
       userId: createDto.userId,
@@ -88,16 +81,7 @@ export class ReservationsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update reservation' })
-  update(
-    @Param('id') id: string,
-    @Body()
-    updateDto: {
-      startsAt?: string;
-      endsAt?: string;
-      status?: ReservationStatus;
-      metaJson?: any;
-    },
-  ) {
+  update(@Param('id') id: string, @Body() updateDto: UpdateReservationDto) {
     const data: any = { ...updateDto };
     if (updateDto.startsAt) {
       data.startsAt = new Date(updateDto.startsAt);

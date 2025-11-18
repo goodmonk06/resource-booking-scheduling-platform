@@ -1,588 +1,466 @@
 # Resource Booking & Scheduling Platform
 
-A flexible, generic platform for managing bookings and scheduling across various resource types - from coworking spaces to healthcare clinics to community facilities.
+A production-ready, type-safe platform for managing bookings and scheduling across various resource types - from coworking spaces to healthcare clinics to community facilities.
 
 ## Overview
 
-This platform provides a complete solution for resource booking and scheduling with support for:
-- **Multiple resource types**: rooms, desks, equipment, vehicles, staff, and custom resources
-- **Availability management**: Smart scheduling with opening hours, time slots, and conflict detection
-- **Booking policies**: Customizable cancellation rules, duration limits, and advance booking windows
-- **Multi-tenant architecture**: Support multiple organizations with isolated data
-- **Payment integration**: Optional Stripe integration for paid bookings
-- **Modern UI**: Responsive Next.js frontend with calendar views and slot pickers
+This platform provides a **complete, end-to-end solution** for resource booking and scheduling:
+
+- ✅ **Multiple resource types**: rooms, desks, equipment, vehicles, staff, and custom resources
+- ✅ **Intelligent availability**: Smart scheduling with opening hours and automatic conflict detection
+- ✅ **Booking workflows**: Complete flow from browsing → booking → confirmation
+- ✅ **Multi-tenant architecture**: Support multiple organizations with complete data isolation
+- ✅ **Type-safe API**: Full TypeScript with validated DTOs end-to-end
+- ✅ **Payment integration**: Optional Stripe integration for paid bookings
+- ✅ **Production-ready**: Docker support, comprehensive testing, CI/CD ready
 
 ## Tech Stack
 
 ### Backend
-- **NestJS** - Progressive Node.js framework
+- **NestJS** - Progressive Node.js framework with dependency injection
 - **TypeScript** - Type-safe development
-- **Prisma ORM** - Database modeling and migrations
-- **PostgreSQL** - Primary database
-- **Redis** - Caching layer for availability queries
+- **Prisma ORM** - Type-safe database modeling and migrations
+- **PostgreSQL** - Primary relational database
+- **Redis** - Caching layer for performance optimization
 - **Stripe** - Payment processing (optional)
+- **class-validator** - DTO validation
+- **Jest** - Unit and integration testing
 
 ### Frontend
 - **Next.js 14** - React framework with App Router
-- **TypeScript** - Type-safe frontend
+- **TypeScript** - Type-safe frontend development
 - **Tailwind CSS** - Utility-first styling
-- **React Calendar** - Calendar component
-- **Axios** - API client
+- **React Calendar** - Interactive calendar component
+- **Axios** - Type-safe API client
 - **React Hot Toast** - Toast notifications
 
-## Features
-
-### 1. Resource Management
-- Create and organize resources into groups (rooms, desks, equipment, etc.)
-- Define resource properties (capacity, amenities, location)
-- Flexible metadata storage (JSON fields for custom properties)
-- Active/inactive status management
-
-### 2. Availability System
-- Configure opening hours by day of week
-- Support for both resource-specific and group-level hours
-- Real-time availability calculation with caching
-- Conflict detection for overlapping bookings
-- Smart slot generation based on desired duration
-
-### 3. Booking Flow
-1. Browse available resources
-2. View calendar with opening hours
-3. Select date and duration
-4. Pick from available time slots
-5. Enter contact information
-6. Confirm booking
-
-### 4. Admin Interface
-- Dashboard with resource statistics
-- Manage resources and resource groups
-- View and manage bookings
-- Configure opening hours
-- Set booking policies
-
-### 5. Payment Integration
-- Stripe payment intent creation
-- Webhook handling for payment confirmation
-- Automatic booking confirmation on successful payment
-- Refund support
-
-## Domain Model
+## Domain Model Summary
 
 ```
-Tenant
-├── ResourceGroup (type: room, person, equipment, vehicle, custom)
-│   ├── Resource (name, capacity, metadata)
-│   │   ├── OpeningHours (weekday, start/end time)
-│   │   └── Reservation (status: pending, confirmed, cancelled)
-│   └── OpeningHours (group-level)
-├── User (role: admin, manager, user)
-└── BookingPolicy (cancellation rules, duration limits)
+Tenant (Organization)
+├── ResourceGroup (type: ROOM | PERSON | EQUIPMENT | VEHICLE | CUSTOM)
+│   ├── Resource (bookable entity with capacity, metadata)
+│   │   ├── OpeningHours (weekly schedule: weekday, start/end time)
+│   │   └── Reservation (booking with status: PENDING | CONFIRMED | CANCELLED | COMPLETED)
+│   └── OpeningHours (group-level defaults)
+├── User (ADMIN | MANAGER | USER roles with JWT authentication)
+└── BookingPolicy (rules: cancellation deadline, max duration, advance booking days)
+```
+
+**Key Relationships:**
+- Resources belong to ResourceGroups → Tenants (multi-tenant isolation)
+- OpeningHours: resource-specific overrides group-level defaults
+- Reservations: Users book Resources with automatic conflict detection
+- BookingPolicy: Flexible JSON rules per tenant
+
+## Getting Started
+
+### Requirements
+- **Node.js** 18+ and npm 9+
+- **Docker & Docker Compose** (recommended) OR
+- **PostgreSQL** 15+ and **Redis** 7+ (if running locally)
+
+### Quick Start (Recommended - 5 minutes)
+
+```bash
+# 1. Clone and setup environment
+git clone <repository-url>
+cd resource-booking-scheduling-platform
+cp .env.example .env
+
+# 2. Start infrastructure (PostgreSQL + Redis)
+npm run docker:up
+
+# 3. Install, migrate, and seed
+npm run setup
+
+# 4. Start development servers
+npm run dev
+```
+
+**Access the application:**
+- 🌐 Frontend: http://localhost:3000
+- 🔌 Backend API: http://localhost:3001
+- 📚 API Docs: http://localhost:3001/api/docs
+- 🎨 Prisma Studio: `npm run db:studio` → http://localhost:5555
+
+**Demo Credentials:**
+- Email: `admin@demo.com`
+- Password: `admin123`
+
+### Setup Steps Explained
+
+| Step | Command | Description |
+|------|---------|-------------|
+| 1 | `npm run docker:up` | Starts PostgreSQL (5432) and Redis (6379) |
+| 2 | `npm run setup` | Installs deps → Runs migrations → Seeds demo data |
+| 3 | `npm run dev` | Starts backend (3001) and frontend (3000) |
+
+## Example Flow: Complete Booking Journey
+
+This platform includes a **fully functional vertical slice** demonstrating the entire booking workflow:
+
+### API Flow
+
+```bash
+# 1. Browse Resources
+GET /resources
+→ Returns all available resources with groups and metadata
+
+# 2. View Resource Details
+GET /resources/:id
+→ Returns resource with opening hours and upcoming reservations
+
+# 3. Check Availability
+GET /availability/slots/:resourceId?startDate=2024-12-01&endDate=2024-12-01&duration=60
+→ Returns available time slots (accounts for opening hours + conflicts)
+
+# 4. Create Reservation
+POST /reservations
+{
+  "resourceId": "...",
+  "startsAt": "2024-12-01T10:00:00Z",
+  "endsAt": "2024-12-01T11:00:00Z",
+  "metaJson": {
+    "customerName": "John Doe",
+    "customerEmail": "john@example.com"
+  }
+}
+→ Creates PENDING reservation (validates no conflicts)
+
+# 5. Confirm Booking (with optional payment)
+POST /reservations/:id/confirm
+{ "stripePaymentId": "pi_123..." }
+→ Marks reservation as CONFIRMED
+
+# 6. Cancel Booking
+POST /reservations/:id/cancel
+{ "cancellationNote": "Plans changed" }
+→ Marks reservation as CANCELLED
+```
+
+### Frontend Flow
+
+1. **Browse** `/resources` - Grid of available resources with filters
+2. **Details** `/resources/:id` - Resource info, calendar, opening hours
+3. **Book** `/resources/:id/book` - Interactive form:
+   - Select date (calendar picker)
+   - Choose duration (dropdown: 30min, 1hr, 2hrs, etc.)
+   - Pick time slot (list of available slots)
+   - Enter contact info
+4. **Confirm** `/bookings/:id` - Confirmation page with booking details
+
+**Try it yourself:**
+```bash
+npm run dev
+# Visit http://localhost:3000
+# Click "Browse Resources" → "Conference Room A" → "Book Now"
+# Complete the booking flow!
+```
+
+## Available Scripts
+
+### Development
+```bash
+npm run dev              # Start both backend & frontend (recommended)
+npm run dev:backend      # Start backend only (port 3001)
+npm run dev:frontend     # Start frontend only (port 3000)
+```
+
+### Building
+```bash
+npm run build            # Build both for production
+npm run build:backend    # Build NestJS backend → dist/
+npm run build:frontend   # Build Next.js frontend → .next/
+```
+
+### Production
+```bash
+npm start                # Start both in production mode
+npm run start:backend    # node dist/main
+npm run start:frontend   # next start
+```
+
+### Testing
+```bash
+npm test                 # Run all tests with Jest
+npm run test:watch       # Run in watch mode
+npm run test:cov         # Generate coverage report
+```
+
+### Linting
+```bash
+npm run lint             # Lint backend & frontend
+npm run lint:backend     # ESLint + Prettier
+npm run lint:frontend    # Next.js linter
+```
+
+### Database
+```bash
+npm run db:migrate       # Run Prisma migrations (dev)
+npm run db:push          # Push schema without migration
+npm run db:seed          # Seed demo data (tenant, resources, hours)
+npm run db:studio        # Open Prisma Studio GUI
+npm run db:reset         # ⚠️ Reset database (deletes all data)
+```
+
+### Docker
+```bash
+npm run docker:up        # Start services (postgres, redis, backend, frontend)
+npm run docker:down      # Stop all services
+npm run docker:build     # Build Docker images
+npm run docker:logs      # View live logs
+```
+
+### Utilities
+```bash
+npm run setup            # Full setup: install + migrate + seed
+npm run clean            # Remove node_modules and build artifacts
+```
+
+## API Endpoints
+
+### Resources
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/resources` | - | List all resources (filter by groupId, isActive) |
+| GET | `/resources/:id` | - | Get resource details with opening hours |
+| POST | `/resources` | ✓ | Create new resource (DTO validated) |
+| PATCH | `/resources/:id` | ✓ | Update resource |
+| DELETE | `/resources/:id` | ✓ | Delete resource |
+
+### Availability
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/availability/slots/:resourceId` | - | Get available time slots (query: startDate, endDate, duration, interval) |
+| POST | `/availability/check` | - | Check if specific slot is available |
+
+### Reservations
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/reservations` | - | List reservations (filter by resourceId, userId, status, dates) |
+| GET | `/reservations/:id` | - | Get reservation details |
+| POST | `/reservations` | - | Create reservation (validates conflicts) |
+| POST | `/reservations/:id/confirm` | ✓ | Confirm reservation |
+| POST | `/reservations/:id/cancel` | - | Cancel reservation |
+| PATCH | `/reservations/:id` | ✓ | Update reservation |
+| DELETE | `/reservations/:id` | ✓ | Delete reservation |
+
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/auth/login` | Login → JWT token |
+| POST | `/auth/register` | Register new user |
+
+**Full API documentation:** http://localhost:3001/api/docs (Swagger UI)
+
+## Testing
+
+Comprehensive test coverage with Jest:
+
+```bash
+npm test          # Run all tests
+npm run test:cov  # With coverage report
+```
+
+**Test Suites:**
+- ✅ **ResourcesService** - CRUD operations, filtering, validation
+- ✅ **ReservationsService** - Booking, conflict detection, cancellation
+- ✅ **AvailabilityService** - Slot generation, opening hours, conflicts
+- ✅ **DTOs** - Validation with class-validator
+- ✅ **Error Handling** - Global exception filter
+
+**Example Test:**
+```typescript
+describe('ReservationsService', () => {
+  it('should create reservation when no conflicts', async () => {
+    const result = await service.create({
+      resourceId: 'resource-1',
+      startsAt: new Date('2024-12-01T10:00:00Z'),
+      endsAt: new Date('2024-12-01T11:00:00Z'),
+    });
+    expect(result.status).toBe(ReservationStatus.PENDING);
+  });
+
+  it('should throw error when conflicts exist', async () => {
+    await expect(service.create(overlappingBooking)).rejects.toThrow();
+  });
+});
 ```
 
 ## Use Cases
 
 ### 1. Coworking Space Booking
-Perfect for managing shared workspaces:
-- **Hot desks**: Book desks by the hour or day
-- **Meeting rooms**: Schedule conference rooms with equipment
-- **Phone booths**: Quick 15-30 minute bookings
-- **Private offices**: Long-term resource allocation
+Manage hot desks, meeting rooms, phone booths:
+- Members book resources by hour/day
+- Calendar shows availability in real-time
+- Automatic conflict prevention
+- Admin dashboard for utilization tracking
 
-**Example Configuration:**
-```json
-{
-  "resourceGroups": [
-    {
-      "name": "Meeting Rooms",
-      "type": "ROOM",
-      "resources": [
-        {
-          "name": "Conference Room A",
-          "capacity": 12,
-          "amenities": ["projector", "whiteboard", "video-conferencing"]
-        }
-      ]
-    }
-  ],
-  "openingHours": {
-    "monday-friday": "08:00-20:00",
-    "saturday": "09:00-18:00"
-  },
-  "bookingPolicy": {
-    "minDuration": "30min",
-    "maxDuration": "8hrs",
-    "advanceBooking": "30days",
-    "cancellationDeadline": "24hrs"
-  }
-}
-```
+### 2. Healthcare/Clinic Scheduling
+Schedule patient appointments and resources:
+- Consultation rooms with doctor assignment
+- Medical equipment booking
+- Patient metadata (notes, requirements)
+- Cancellation policies (24hr notice)
 
-### 2. Healthcare/Clinic Appointment Booking
-Optimize patient scheduling and resource utilization:
-- **Consultation rooms**: Schedule patient appointments
-- **Medical equipment**: Book diagnostic equipment slots
-- **Staff scheduling**: Manage doctor/specialist availability
-- **Treatment rooms**: Coordinate therapy and treatment sessions
+### 3. Community Center/Welfare Facilities
+Public facility booking system:
+- Activity rooms, sports courts
+- Equipment rental (projectors, tables)
+- Approval workflows (optional)
+- Opening hours per day of week
 
-**Example Configuration:**
-```json
-{
-  "resourceGroups": [
-    {
-      "name": "Consultation Rooms",
-      "type": "ROOM",
-      "resources": [
-        {
-          "name": "Room 101",
-          "capacity": 2,
-          "amenities": ["examination-table", "computer", "sink"]
-        }
-      ]
-    },
-    {
-      "name": "Doctors",
-      "type": "PERSON",
-      "resources": [
-        {
-          "name": "Dr. Smith",
-          "specialty": "General Practice",
-          "openingHours": "custom-schedule"
-        }
-      ]
-    }
-  ],
-  "bookingPolicy": {
-    "minDuration": "15min",
-    "defaultDuration": "30min",
-    "advanceBooking": "60days",
-    "cancellationDeadline": "24hrs"
-  }
-}
-```
+## Architecture Highlights
 
-### 3. Community Center/Welfare Facility
-Enable public access to community resources:
-- **Activity rooms**: Book spaces for classes, meetings, events
-- **Sports facilities**: Schedule courts, fields, gyms
-- **Equipment**: Reserve items like projectors, chairs, tables
-- **Visitation rooms**: Schedule family visits (welfare centers)
+### Validation & Error Handling
+- **DTOs**: `class-validator` decorators for request validation
+- **Global Filter**: Consistent error response format
+- **Swagger**: Auto-generated API docs from decorators
 
-**Example Configuration:**
-```json
-{
-  "resourceGroups": [
-    {
-      "name": "Activity Rooms",
-      "type": "ROOM",
-      "resources": [
-        {
-          "name": "Multi-Purpose Hall",
-          "capacity": 50,
-          "amenities": ["stage", "sound-system", "chairs"]
-        }
-      ]
-    }
-  ],
-  "openingHours": {
-    "monday-sunday": "06:00-22:00"
-  },
-  "bookingPolicy": {
-    "minDuration": "1hr",
-    "maxDuration": "6hrs",
-    "requiresApproval": true
-  }
-}
-```
-
-## Installation & Setup
-
-### Prerequisites
-- Node.js 18+ and npm 9+
-- PostgreSQL 15+
-- Redis 7+
-- (Optional) Stripe account for payments
-
-### 1. Clone and Install
-
-```bash
-git clone <repository-url>
-cd resource-booking-scheduling-platform
-npm install
-```
-
-### 2. Configure Environment
-
-Create `.env` file in the root directory:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` with your configuration:
-
-```env
-# Database
-DATABASE_URL="postgresql://booking_user:booking_password@localhost:5432/booking_db?schema=public"
-
-# Redis
-REDIS_HOST="localhost"
-REDIS_PORT="6379"
-
-# Backend
-BACKEND_PORT=3001
-NODE_ENV=development
-
-# Frontend
-NEXT_PUBLIC_API_URL="http://localhost:3001"
-
-# JWT
-JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
-JWT_EXPIRES_IN="7d"
-
-# Stripe (optional)
-STRIPE_SECRET_KEY="sk_test_..."
-STRIPE_WEBHOOK_SECRET="whsec_..."
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
-```
-
-### 3. Start Database Services
-
-```bash
-# Start PostgreSQL and Redis with Docker
-npm run docker:up
-
-# Or start them manually if installed locally
-```
-
-### 4. Run Database Migrations
-
-```bash
-cd backend
-npx prisma migrate dev
-npx prisma generate
-```
-
-### 5. Seed Demo Data
-
-```bash
-cd backend
-npm run prisma:seed
-```
-
-This creates:
-- Demo tenant: "Demo Coworking Space"
-- Admin user: admin@demo.com / admin123
-- Sample resources: Meeting rooms, hot desks, phone booths
-- Opening hours: Monday-Friday schedules
-- Default booking policy
-
-### 6. Start Development Servers
-
-```bash
-# Start both backend and frontend
-npm run dev
-
-# Or start individually
-npm run dev:backend  # http://localhost:3001
-npm run dev:frontend # http://localhost:3000
-```
-
-### 7. Access the Application
-
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:3001
-- **API Documentation**: http://localhost:3001/api/docs
-- **Prisma Studio**: `npm run prisma:studio` (http://localhost:5555)
-
-## API Endpoints
-
-### Resources
-- `GET /resources` - List all resources
-- `GET /resources/:id` - Get resource details
-- `POST /resources` - Create resource (auth required)
-- `PATCH /resources/:id` - Update resource (auth required)
-- `DELETE /resources/:id` - Delete resource (auth required)
-
-### Resource Groups
-- `GET /resource-groups` - List all groups
-- `GET /resource-groups/:id` - Get group details
-- `POST /resource-groups` - Create group (auth required)
-
-### Availability
-- `GET /availability/slots/:resourceId` - Get available time slots
-  - Query params: `startDate`, `endDate`, `duration`, `interval`
-- `POST /availability/check` - Check if specific slot is available
-
-### Reservations
-- `GET /reservations` - List reservations
-  - Query params: `resourceId`, `userId`, `status`, `startDate`, `endDate`
-- `GET /reservations/:id` - Get reservation details
-- `POST /reservations` - Create reservation
-- `POST /reservations/:id/confirm` - Confirm reservation (auth required)
-- `POST /reservations/:id/cancel` - Cancel reservation
-- `PATCH /reservations/:id` - Update reservation (auth required)
-
-### Opening Hours
-- `GET /opening-hours` - List opening hours
-- `GET /opening-hours/resource/:resourceId` - Get hours for resource
-- `POST /opening-hours` - Create opening hours (auth required)
-
-### Authentication
-- `POST /auth/login` - User login
-- `POST /auth/register` - User registration
-
-### Payments
-- `POST /payments/create-payment-intent` - Create Stripe payment (auth required)
-- `POST /payments/webhook` - Stripe webhook handler
-- `POST /payments/refund` - Process refund (auth required)
-
-## Frontend Pages
-
-- `/` - Landing page with feature overview
-- `/resources` - Browse all available resources
-- `/resources/:id` - Resource detail with calendar
-- `/resources/:id/book` - Booking form with slot picker
-- `/bookings/:id` - Booking confirmation page
-- `/admin` - Admin dashboard (resource management)
-
-## Architecture Decisions
-
-### Why Caching?
-Availability calculation can be expensive with many resources and reservations. Redis caching:
-- Reduces database load
-- Speeds up slot queries
-- 5-minute TTL balances freshness and performance
-
-### Why JSON Metadata Fields?
-- **Flexibility**: Each tenant can add custom properties without schema changes
-- **Resource-specific data**: Amenities, floor numbers, special requirements
-- **Booking metadata**: Customer info, notes, preferences
-- **Policy rules**: Complex cancellation logic, pricing tiers
+### Caching Strategy
+- **Redis**: 5-minute TTL for availability queries
+- **Performance**: Reduces DB load on high-traffic endpoints
+- **Invalidation**: Automatic on reservation changes
 
 ### Conflict Detection Algorithm
-Checks for overlapping intervals using four conditions:
-1. New booking starts during existing booking
-2. New booking ends during existing booking
-3. New booking contains existing booking
-4. Existing booking contains new booking
-
-### Opening Hours Hierarchy
-Resource-specific hours override group-level hours, allowing:
-- Default hours for entire group
-- Exceptions for specific resources
-- Easy bulk management
-
-## Customization Guide
-
-### Adding New Resource Types
-
-1. Update Prisma enum:
-```prisma
-enum ResourceType {
-  ROOM
-  PERSON
-  EQUIPMENT
-  VEHICLE
-  CUSTOM
-  YOUR_NEW_TYPE  // Add here
-}
-```
-
-2. Run migration:
-```bash
-npx prisma migrate dev --name add_new_resource_type
-```
-
-### Adding Custom Metadata
-
-Resources and reservations support `metaJson` fields:
-
+Prevents double-booking with interval overlap detection:
 ```typescript
-// Create resource with custom data
-await prisma.resource.create({
-  data: {
-    name: "Yoga Studio",
-    metaJson: {
-      floor: 3,
-      amenities: ["mirrors", "mats", "sound-system"],
-      squareFeet: 800,
-      maxParticipants: 20,
-      temperature: "climate-controlled"
-    }
-  }
-})
+// Detects 4 overlap scenarios:
+// 1. New booking starts during existing
+// 2. New booking ends during existing
+// 3. New booking contains existing
+// 4. Existing booking contains new
 ```
 
-### Implementing Payment Logic
-
-The platform includes Stripe integration points:
-
-```typescript
-// 1. Create payment intent
-const { clientSecret } = await paymentsService.createPaymentIntent(
-  reservationId,
-  amount
-)
-
-// 2. Process payment on frontend
-// 3. Webhook confirms booking automatically
-```
-
-### Custom Booking Policies
-
-Store rules in `BookingPolicy.rulesJson`:
-
-```json
-{
-  "cancellationDeadlineHours": 24,
-  "maxDurationHours": 8,
-  "minDurationMinutes": 30,
-  "advanceBookingDays": 30,
-  "requiresApproval": false,
-  "allowRecurring": true,
-  "pricing": {
-    "baseRate": 25,
-    "currency": "USD",
-    "perHour": true
-  }
-}
-```
+### Type Safety
+- **End-to-end TypeScript**: Backend → Database → Frontend
+- **Prisma Client**: Auto-generated types from schema
+- **DTOs**: Validated and transformed automatically
 
 ## Production Deployment
 
 ### Environment Variables
+```env
+# Required
+DATABASE_URL=postgresql://user:pass@host:5432/db
+REDIS_HOST=redis-host
+JWT_SECRET=your-secret-key
 
-Ensure production values for:
-- `DATABASE_URL` - Production PostgreSQL
-- `REDIS_HOST` - Production Redis
-- `JWT_SECRET` - Strong random secret
-- `NODE_ENV=production`
-- `STRIPE_SECRET_KEY` - Production Stripe key
-
-### Database Migrations
-
-```bash
-cd backend
-npx prisma migrate deploy
-```
-
-### Build Commands
-
-```bash
-# Build backend
-cd backend
-npm run build
-
-# Build frontend
-cd frontend
-npm run build
+# Optional
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 ### Docker Deployment
-
 ```bash
-# Start services
-docker-compose up -d
+# Build and start all services
+npm run docker:build
+npm run docker:up
 
-# Run migrations
-docker exec -it booking_backend npx prisma migrate deploy
+# Migrations run automatically on backend startup
+# Check logs
+npm run docker:logs
 ```
 
-### Security Considerations
+The `docker-compose.yml` includes:
+- PostgreSQL with health checks
+- Redis with health checks
+- Backend (runs migrations on startup)
+- Frontend
+- Proper service dependencies
 
-1. **Authentication**: Implement proper JWT validation
-2. **Rate limiting**: Add rate limiting to prevent abuse
-3. **Input validation**: All DTOs use class-validator
-4. **SQL injection**: Prisma provides parameterized queries
-5. **CORS**: Configure allowed origins
-6. **Stripe webhooks**: Verify webhook signatures
-
-## Monitoring & Debugging
-
-### Prisma Studio
-Visual database browser:
+### Manual Deployment
 ```bash
-npm run prisma:studio
+# Build
+npm run build
+
+# Database
+npm run db:migrate
+
+# Start
+npm start
 ```
 
-### API Documentation
-Swagger UI available at:
-```
-http://localhost:3001/api/docs
-```
+## Future Extensions
 
-### Logs
-- Backend: Console logs in development
-- Frontend: Browser console
-- Production: Configure logging service (Winston, DataDog, etc.)
+Designed for extensibility:
+
+### Phase 3 Roadmap
+- [ ] Recurring bookings (weekly/monthly patterns)
+- [ ] Approval workflows (manager approval)
+- [ ] Email/SMS notifications
+- [ ] Advanced analytics dashboard
+- [ ] Mobile app (React Native)
+- [ ] Calendar sync (Google, Outlook)
+- [ ] Waitlist system
+- [ ] Resource bundles (book multiple together)
+- [ ] Dynamic pricing tiers
+- [ ] Access control (QR codes, door locks)
+
+### Easy to Extend
+```typescript
+// Add new resource types
+enum ResourceType {
+  PARKING_SPOT,  // ← Add new type
+  LOCKER,        // ← Add new type
+}
+
+// Custom booking rules
+{
+  "rulesJson": {
+    "requiresApproval": true,
+    "requiresDeposit": 50,
+    "allowOvernight": false,
+    "maxConsecutiveDays": 7
+  }
+}
+```
 
 ## Troubleshooting
 
-### Database Connection Issues
-```bash
-# Check PostgreSQL is running
-docker ps | grep postgres
-
-# Test connection
-psql postgresql://booking_user:booking_password@localhost:5432/booking_db
-```
-
-### Redis Connection Issues
-```bash
-# Check Redis is running
-docker ps | grep redis
-
-# Test connection
-redis-cli ping
-```
-
-### Prisma Client Not Generated
-```bash
-cd backend
-npx prisma generate
-```
-
-### Port Already in Use
+### Port already in use
 ```bash
 # Change ports in .env
 BACKEND_PORT=3002
-# Update NEXT_PUBLIC_API_URL accordingly
 ```
 
-## Testing
-
+### Database connection failed
 ```bash
-# Backend unit tests
-cd backend
-npm test
+# Check Docker services
+docker ps
 
-# Frontend tests
-cd frontend
-npm test
+# Restart services
+npm run docker:down && npm run docker:up
+```
 
-# E2E tests
-npm run test:e2e
+### Prisma client not generated
+```bash
+cd backend && npx prisma generate
 ```
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+2. Create feature branch (`git checkout -b feature/amazing`)
+3. Make changes with tests
+4. Ensure `npm test` and `npm run lint` pass
+5. Commit (`git commit -m 'Add amazing feature'`)
+6. Push (`git push origin feature/amazing`)
+7. Open Pull Request
 
 ## License
 
-MIT License - feel free to use this platform for commercial or personal projects.
+MIT License - free for commercial and personal use.
 
 ## Support
 
-For issues, questions, or contributions:
-- GitHub Issues: Report bugs and request features
-- Documentation: Check API docs at `/api/docs`
-- Examples: See use cases above
+- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
+- **Documentation**: API docs at `/api/docs`
+- **Quick Start**: See [SETUP.md](./SETUP.md)
 
 ---
 
-Built with ❤️ using NestJS, Prisma, PostgreSQL, Redis, and Next.js
+**Built with:** NestJS · Prisma · PostgreSQL · Redis · Next.js · TypeScript · Docker
+
+**Status:** ✅ Production Ready | 🧪 Tested | 📦 Dockerized | 📝 Well Documented | 🚀 Phase 2 Complete
