@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { CacheModule } from '@nestjs/cache-manager';
 import * as redisStore from 'cache-manager-redis-store';
 import { PrismaModule } from './prisma/prisma.module';
+import { LibModule } from './lib/lib.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { UsersModule } from './users/users.module';
 import { ResourceGroupsModule } from './resource-groups/resource-groups.module';
@@ -13,6 +14,10 @@ import { BookingPoliciesModule } from './booking-policies/booking-policies.modul
 import { AvailabilityModule } from './availability/availability.module';
 import { AuthModule } from './auth/auth.module';
 import { PaymentsModule } from './payments/payments.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { RecurringReservationsModule } from './recurring-reservations/recurring-reservations.module';
+import { EventBus } from './lib/events/domain-events';
 
 @Module({
   imports: [
@@ -27,6 +32,7 @@ import { PaymentsModule } from './payments/payments.module';
       ttl: 300, // 5 minutes default TTL
     }),
     PrismaModule,
+    LibModule,
     AuthModule,
     TenantsModule,
     UsersModule,
@@ -37,6 +43,16 @@ import { PaymentsModule } from './payments/payments.module';
     BookingPoliciesModule,
     AvailabilityModule,
     PaymentsModule,
+    ReviewsModule,
+    NotificationsModule,
+    RecurringReservationsModule,
   ],
+  providers: [
+    {
+      provide: EventBus,
+      useValue: new EventBus(),
+    },
+  ],
+  exports: [EventBus],
 })
 export class AppModule {}
