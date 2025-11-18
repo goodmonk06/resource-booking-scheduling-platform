@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Tenant represents an organization or customer using the platform
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  resourceGroups ResourceGroup[]
+  bookingPolicies BookingPolicy[]
+  users          User[]
+
+  @@map("tenants")
+}
+
+// User model for authentication and ownership
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      UserRole @default(USER)
+  tenantId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  USER
+}
+
+// ResourceGroup organizes resources by type (rooms, equipment, staff, etc.)
+model ResourceGroup {
+  id         String               @id @default(uuid())
+  tenantId   String
+  name       String
+  type       ResourceType
+  configJson Json?                // Additional configuration as JSON
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  resources    Resource[]
+  openingHours OpeningHours[]
+
+  @@map("resource_groups")
+}
+
+enum ResourceType {
+  ROOM
+  PERSON
+  EQUIPMENT
+  VEHICLE
+  CUSTOM
+}
+
+// Resource represents a bookable entity
+model Resource {
+  id          String   @id @default(uuid())
+  groupId     String
+  name        String
+  description String?
+  capacity    Int?     // Number of people/items it can accommodate
+  metaJson    Json?    // Additional metadata as JSON
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  group        ResourceGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  openingHours OpeningHours[]
+  reservations Reservation[]
+
+  @@map("resources")
+}
+
+// OpeningHours defines when a resource or group is available
+model OpeningHours {
+  id          String   @id @default(uuid())
+  resourceId  String?  // If set, applies to specific resource
+  groupId     String?  // If set, applies to all resources in group
+  weekday     Int      // 0-6 (Sunday-Saturday)
+  startTime   String   // HH:mm format
+  endTime     String   // HH:mm format
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  resource Resource?      @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  group    ResourceGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@map("opening_hours")
+}
+
+// Reservation represents a booking
+model Reservation {
+  id                String            @id @default(uuid())
+  resourceId        String
+  userId            String?           // Optional: for anonymous bookings
+  startsAt          DateTime
+  endsAt            DateTime
+  status            ReservationStatus @default(PENDING)
+  metaJson          Json?             // Additional metadata (customer info, notes, etc.)
+  stripePaymentId   String?           // For payment tracking
+  cancellationNote  String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([resourceId, startsAt, endsAt])
+  @@index([status])
+  @@map("reservations")
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+// BookingPolicy defines rules for booking
+model BookingPolicy {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  rulesJson Json     // Contains: cancellationDeadlineHours, maxDurationHours, minDurationMinutes, advanceBookingDays, etc.
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("booking_policies")
+}
