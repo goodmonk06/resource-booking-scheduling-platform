@@ -17,6 +17,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RecurringReservationsModule } from './recurring-reservations/recurring-reservations.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { EventBus } from './lib/events/domain-events';
 
 @Module({
@@ -46,6 +47,7 @@ import { EventBus } from './lib/events/domain-events';
     ReviewsModule,
     NotificationsModule,
     RecurringReservationsModule,
+    AnalyticsModule,
   ],
   providers: [
     {
